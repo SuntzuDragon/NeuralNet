@@ -1,7 +1,5 @@
 import numpy as np
 import gzip
-import matplotlib.pyplot as plt
-import random
 
 
 def load_images(path):
@@ -51,7 +49,8 @@ class NeuralNet:
     def get_predictions(self):
         return np.argmax(self.a2, 0)
 
-    def get_accuracy(self, predictions, labels):
+    @staticmethod
+    def get_accuracy(predictions, labels):
         print(predictions, labels)
         return np.sum(predictions == labels) / labels.size
 
@@ -60,7 +59,7 @@ class NeuralNet:
             self.forward_prop(data)
             self.back_prop(data, labels, alpha)
             if i % 50 == 0:
-                print(f"Iteration: {i}\tAccuracy: {self.get_accuracy(self.get_predictions(), labels)}")
+                print(f"Iteration: {i}\tAccuracy: {NeuralNet.get_accuracy(self.get_predictions(), labels)}")
 
     def forward_prop(self, data):
         self.z1 = self.w1.dot(data) + self.b1
@@ -73,10 +72,10 @@ class NeuralNet:
         one_hot_examples = NeuralNet.one_hot(labels)
         dz2 = self.a2 - one_hot_examples
         dw2 = (1 / labels.size) * dz2.dot(self.a1.T)
-        db2 = (1 / labels.size) * np.sum(dz2, 2)
+        db2 = (1 / labels.size) * np.sum(dz2)
         dz1 = self.w2.T.dot(dz2) * NeuralNet.relu_prime(self.z1)
         dw1 = (1 / labels.size) * dz1.dot(data.T)
-        db1 = (1 / labels.size) * np.sum(dz1, 2)
+        db1 = (1 / labels.size) * np.sum(dz1)
 
         # Update parameters
         self.w1 = self.w1 - alpha * dw1
@@ -86,7 +85,7 @@ class NeuralNet:
 
     @staticmethod
     def one_hot(examples):
-        one_hot_examples = np.zeros(examples.size, examples.max() + 1)
+        one_hot_examples = np.zeros((examples.size, examples.max() + 1))
         one_hot_examples[np.arange(examples.size), examples] = 1
         return one_hot_examples.T
 

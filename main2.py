@@ -23,10 +23,10 @@ def load_labels(path):
 
 class NeuralNet:
     def __init__(self):
-        self.w1 = np.random.randn(10, 784)
-        self.b1 = np.random.randn(10, 1)
-        self.w2 = np.random.randn(10, 10)
-        self.b2 = np.random.randn(10, 1)
+        self.w1 = np.random.rand(10, 784) - 0.5
+        self.b1 = np.random.rand(10, 1) - 0.5
+        self.w2 = np.random.rand(10, 10) - 0.5
+        self.b2 = np.random.rand(10, 1) - 0.5
 
         self.z1 = None
         self.a1 = None
@@ -43,8 +43,7 @@ class NeuralNet:
 
     @staticmethod
     def softmax(inputs):
-        exp_inputs = np.exp(inputs - np.max(inputs, axis=1, keepdims=True))
-        return exp_inputs / np.sum(exp_inputs, axis=1, keepdims=True)
+        return np.divide(np.exp(inputs), np.sum(np.exp(inputs)))
 
     def get_predictions(self):
         return np.argmax(self.a2, 0)
@@ -97,4 +96,4 @@ if __name__ == '__main__':
     testing_labels = load_labels('t10k-labels-idx1-ubyte.gz')
 
     net = NeuralNet()
-    net.gradient_descent(training_images, training_labels, 100, 0.1)
+    net.gradient_descent(training_images, training_labels, 500, 0.1)

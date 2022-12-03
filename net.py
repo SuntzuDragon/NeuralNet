@@ -97,13 +97,19 @@ class NeuralNetwork:
         self.b1 = self.b1 - self.learning_rate * d_b1
 
     def train(self, num_epochs, verbose=False):
+        train_data = self.train_data
+        train_labels = self.train_labels
         start_time = time.perf_counter()
         for i in range(num_epochs):
-            self.__feed_forward(self.train_data)
-            self.__back_prop(self.train_data, self.train_labels)
+            if self.learn_method == 'sgd':
+                shuffle_index = np.random.permutation(self.train_data.shape[1])
+                train_data = self.train_data[:, shuffle_index][:, :5000]
+                train_labels = self.train_labels[:, shuffle_index][:, :5000]
+            self.__feed_forward(train_data)
+            self.__back_prop(train_data, train_labels)
 
-            self.__feed_forward(self.train_data)
-            cost = self.__compute_loss(self.train_labels, self.a2)
+            self.__feed_forward(train_data)
+            cost = self.__compute_loss(train_labels, self.a2)
 
             if i % 25 == 0 and verbose:
                 print(f"Epoch: {i}, cost: {cost}")
@@ -134,7 +140,13 @@ if __name__ == '__main__':
     print(f"X_test: {X_test.shape}")
     print(f"y_test: {y_test.shape}")
 
+    np.random.seed(100)
+
     # Create and train neural network
-    net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 1.0)
-    net.train(100, verbose=True)
-    net.get_results()
+    sgd_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 1.0, learn_method='sgd')
+    sgd_net.train(1000, verbose=True)
+    sgd_net.get_results()
+
+    gradient_descent_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 1.0, learn_method='gradient_descent')
+    gradient_descent_net.train(1000, verbose=True)
+    gradient_descent_net.get_results()

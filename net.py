@@ -103,8 +103,8 @@ class NeuralNetwork:
         for i in range(num_epochs):
             if self.learn_method == 'sgd':
                 shuffle_index = np.random.permutation(self.train_data.shape[1])
-                train_data = self.train_data[:, shuffle_index][:, :5000]
-                train_labels = self.train_labels[:, shuffle_index][:, :5000]
+                train_data = self.train_data[:, shuffle_index][:, :1000]
+                train_labels = self.train_labels[:, shuffle_index][:, :1000]
             self.__feed_forward(train_data)
             self.__back_prop(train_data, train_labels)
 
@@ -143,10 +143,10 @@ if __name__ == '__main__':
     np.random.seed(100)
 
     # Create and train neural network
-    sgd_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 1.0, learn_method='sgd')
-    sgd_net.train(1000, verbose=True)
+    sgd_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='sgd')
+    sgd_net.train(2000, verbose=True)
     sgd_net.get_results()
 
-    gradient_descent_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 1.0, learn_method='gradient_descent')
-    gradient_descent_net.train(1000, verbose=True)
+    gradient_descent_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='gradient_descent')
+    gradient_descent_net.train(2000, verbose=True)
     gradient_descent_net.get_results()

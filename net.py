@@ -1,4 +1,6 @@
 import gzip
+import time
+
 import numpy as np
 import matplotlib
 from sklearn.metrics import classification_report, confusion_matrix
@@ -26,80 +28,97 @@ def load_labels(path):
     return np.frombuffer(buf, dtype=np.uint8).astype(np.int64)
 
 
-def sigmoid(z):
-    z = np.clip(z, -500, 500)
-    return 1 / (1 + np.exp(-z))
+class NeuralNetwork:
+    def __init__(self, num_hidden, train_data, train_labels, test_data, test_labels, learning_rate,
+                 learn_method='gradient_descent'):
+        # Set instance variables
+        self.train_data = train_data
+        self.train_labels = train_labels
+        self.test_data = test_data
+        self.test_labels = test_labels
+        self.learning_rate = learning_rate
+        self.learn_method = learn_method
+        self.training_time = 0.0
+        # Transform training data
+        self.train_data = self.train_data.T / 255
+        self.test_data = self.test_data.T / 255
+        train_n = self.train_labels.shape[0]
+        test_n = self.test_labels.shape[0]
+        self.train_labels = self.train_labels.reshape(1, train_n)
+        self.test_labels = self.test_labels.reshape(1, test_n)
+        train_new = np.eye(10)[self.train_labels.astype('int32')]
+        test_new = np.eye(10)[self.test_labels.astype('int32')]
+        self.train_labels = train_new.T.reshape(10, train_n)
+        self.test_labels = test_new.T.reshape(10, test_n)
+        # Setup weights and biases
+        self.w1 = np.random.randn(num_hidden, train_data.shape[1]) * np.sqrt(1.0 / train_data.shape[1])
+        self.b1 = np.zeros((num_hidden, 1))
+        self.w2 = np.random.randn(10, num_hidden) * np.sqrt(1.0 / train_data.shape[1])
+        self.b2 = np.zeros((10, 1))
+        self.z1 = None
+        self.a1 = None
+        self.z2 = None
+        self.a2 = None
 
+    @staticmethod
+    def sigmoid(z):
+        z = np.clip(z, -500, 500)
+        return 1 / (1 + np.exp(-z))
 
-def softmax(z):
-    return np.exp(z) / np.sum(np.exp(z), axis=0)
+    @staticmethod
+    def softmax(z):
+        return np.exp(z) / np.sum(np.exp(z), axis=0)
 
+    @staticmethod
+    def __compute_loss(y, y_hat):
+        loss_sum = np.sum(np.multiply(y, np.log(y_hat)))
+        return -(1 / y.shape[1]) * loss_sum
 
-def compute_loss(Y, Y_hat):
-    n = Y.shape[1]
-    epsilon = 1e-7
-    L = -(1. / n) * (np.sum(np.multiply(np.log(Y_hat + epsilon), Y)) + np.sum(
-        np.multiply(np.log(1 - Y_hat + epsilon), (1 - Y))))
-    return L
+    def __feed_forward(self, train_data):
+        self.z1 = np.matmul(self.w1, train_data) + self.b1
+        self.a1 = NeuralNetwork.sigmoid(self.z1)
+        self.z2 = np.matmul(self.w2, self.a1) + self.b2
+        self.a2 = NeuralNetwork.softmax(self.z2)
 
+    def __back_prop(self, train_data, train_labels):
+        num_examples = train_data.shape[1]
+        d_z2 = self.a2 - train_labels
+        d_w2 = (1.0 / num_examples) * np.matmul(d_z2, self.a1.T)
+        d_b2 = (1.0 / num_examples) * np.sum(d_z2, axis=1, keepdims=True)
 
-def compute_multiclass_loss(Y, Y_hat):
-    L_sum = np.sum(np.multiply(Y, np.log(Y_hat)))
-    m = Y.shape[1]
-    L = -(1 / m) * L_sum
-    return L
+        d_a1 = np.matmul(self.w2.T, d_z2)
+        d_z1 = d_a1 * NeuralNetwork.sigmoid(self.z1) * (1 - NeuralNetwork.sigmoid(self.z1))
+        d_w1 = (1.0 / num_examples) * np.matmul(d_z1, train_data.T)
+        d_b1 = (1.0 / num_examples) * np.sum(d_z1, axis=1, keepdims=True)
 
+        self.w2 = self.w2 - self.learning_rate * d_w2
+        self.b2 = self.b2 - self.learning_rate * d_b2
+        self.w1 = self.w1 - self.learning_rate * d_w1
+        self.b1 = self.b1 - self.learning_rate * d_b1
 
-def get_results(W1, W2, b1, b2):
-    Z1 = np.matmul(W1, X_test) + b1
-    A1 = sigmoid(Z1)
-    Z2 = np.matmul(W2, A1) + b2
-    A2 = softmax(Z2)
+    def train(self, num_epochs, verbose=False):
+        start_time = time.perf_counter()
+        for i in range(num_epochs):
+            self.__feed_forward(self.train_data)
+            self.__back_prop(self.train_data, self.train_labels)
 
-    predictions = np.argmax(A2, axis=0)
-    labels = np.argmax(y_test, axis=0)
+            self.__feed_forward(self.train_data)
+            cost = self.__compute_loss(self.train_labels, self.a2)
 
-    print(confusion_matrix(predictions, labels))
-    print(classification_report(predictions, labels))
+            if i % 25 == 0 and verbose:
+                print(f"Epoch: {i}, cost: {cost}")
+        end_time = time.perf_counter()
+        self.training_time = end_time - start_time
 
+    def get_results(self):
+        self.__feed_forward(self.test_data)
 
-def run_network(X, Y):
-    learning_rate = 1
+        predictions = np.argmax(self.a2, axis=0)
+        labels = np.argmax(self.test_labels, axis=0)
 
-    n_x = X.shape[0]
-    n_h = 64
-    m = X.shape[1]
-
-    W1 = np.random.randn(n_h, n_x)
-    b1 = np.zeros((n_h, 1))
-    W2 = np.random.randn(10, n_h)
-    b2 = np.zeros((10, 1))
-
-    for i in range(500):
-        Z1 = np.matmul(W1, X) + b1
-        A1 = sigmoid(Z1)
-        Z2 = np.matmul(W2, A1) + b2
-        A2 = softmax(Z2)
-
-        cost = compute_multiclass_loss(Y, A2)
-
-        dZ2 = A2 - Y
-        dW2 = (1. / m) * np.matmul(dZ2, A1.T)
-        db2 = (1. / m) * np.sum(dZ2, axis=1, keepdims=True)
-
-        dA1 = np.matmul(W2.T, dZ2)
-        dZ1 = dA1 * sigmoid(Z1) * (1 - sigmoid(Z1))
-        dW1 = (1. / m) * np.matmul(dZ1, X.T)
-        db1 = (1. / m) * np.sum(dZ1, axis=1, keepdims=True)
-
-        W2 = W2 - learning_rate * dW2
-        b2 = b2 - learning_rate * db2
-        W1 = W1 - learning_rate * dW1
-        b1 = b1 - learning_rate * db1
-
-        if i % 25 == 0:
-            print(f"Epoch: {i}, cost: {cost}")
-    get_results(W1, W2, b1, b2)
+        print(f"Total training time: {self.training_time:0.4f} seconds")
+        print(confusion_matrix(predictions, labels))
+        print(classification_report(predictions, labels))
 
 
 if __name__ == '__main__':
@@ -109,36 +128,13 @@ if __name__ == '__main__':
     X_test = load_images('t10k-images-idx3-ubyte.gz')
     y_test = load_labels('t10k-labels-idx1-ubyte.gz')
 
-    # Transform training data
-    X_train = X_train.T / 255
-    X_test = X_test.T / 255
-    y_train_n = y_train.shape[0]
-    y_test_n = y_test.shape[0]
-    y_train = y_train.reshape(1, y_train_n)
-    y_test = y_test.reshape(1, y_test_n)
-    y_train_new = np.eye(10)[y_train.astype('int32')]
-    y_test_new = np.eye(10)[y_test.astype('int32')]
-    y_train = y_train_new.T.reshape(10, y_train_n)
-    y_test = y_test_new.T.reshape(10, y_test_n)
-
     # Check shape of data
     print(f"X_train: {X_train.shape}")
     print(f"y_train: {y_train.shape}")
     print(f"X_test: {X_test.shape}")
     print(f"y_test: {y_test.shape}")
 
-    m = X_train.shape[1]
-
-    # Shuffle the data
-    np.random.seed(138)
-    shuffle_index = np.random.permutation(m)
-    X_train, y_train = X_train[:, shuffle_index], y_train[:, shuffle_index]
-
-    # Check plot of data
-    # i = 3
-    # plt.imshow(X_train[:, i].reshape(28, 28), cmap=matplotlib.cm.binary)
-    # plt.axis('off')
-    # plt.show()
-    # print(y_train[:, i])
-
-    run_network(X_train, y_train)
+    # Create and train neural network
+    net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 1.0)
+    net.train(100, verbose=True)
+    net.get_results()

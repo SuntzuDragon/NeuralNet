@@ -35,6 +35,17 @@ def show_image(train_data, train_labels, index):
     plt.show()
 
 
+def plot_loss(net, title):
+    x = range(net.loss_vals.shape[0])
+    y = net.loss_vals
+    plt.suptitle(title)
+    plt.title(f"Total training time: {net.training_time:0.4f} seconds", fontsize=8)
+    plt.xlabel("Epoch")
+    plt.ylabel("Cost")
+    plt.plot(x, y)
+    plt.show()
+
+
 class NeuralNetwork:
     def __init__(self, num_hidden, train_data, train_labels, test_data, test_labels, learning_rate,
                  learn_method='gradient_descent'):
@@ -46,6 +57,7 @@ class NeuralNetwork:
         self.learning_rate = learning_rate
         self.learn_method = learn_method
         self.training_time = 0.0
+        self.loss_vals = None
         # Transform training data
         self.train_data = self.train_data.T / 255
         self.test_data = self.test_data.T / 255
@@ -106,6 +118,7 @@ class NeuralNetwork:
     def train(self, num_epochs, verbose=False):
         train_data = self.train_data
         train_labels = self.train_labels
+        self.loss_vals = np.empty(num_epochs)
         start_time = time.perf_counter()
         for i in range(num_epochs):
             if self.learn_method == 'sgd':
@@ -117,6 +130,7 @@ class NeuralNetwork:
 
             self.__feed_forward(train_data)
             cost = self.__compute_loss(train_labels, self.a2)
+            self.loss_vals[i] = cost
 
             if i % 25 == 0 and verbose:
                 print(f"Epoch: {i}, cost: {cost}")
@@ -129,6 +143,7 @@ class NeuralNetwork:
         predictions = np.argmax(self.a2, axis=0)
         labels = np.argmax(self.test_labels, axis=0)
 
+        print(f"Training method: {self.learn_method}")
         print(f"Total training time: {self.training_time:0.4f} seconds")
         print(confusion_matrix(predictions, labels))
         print(classification_report(predictions, labels))
@@ -147,13 +162,15 @@ if __name__ == '__main__':
     print(f"X_test: {X_test.shape}")
     print(f"y_test: {y_test.shape}")
 
+    # Set seed
     np.random.seed(100)
 
     # Create and train neural network
-    # sgd_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='sgd')
-    # sgd_net.train(2000, verbose=True)
-    # sgd_net.get_results()
-    #
-    # gradient_descent_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='gradient_descent')
-    # gradient_descent_net.train(2000, verbose=True)
-    # gradient_descent_net.get_results()
+    sgd_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='sgd')
+    gradient_descent_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='gradient_descent')
+    sgd_net.train(3000, verbose=True)
+    gradient_descent_net.train(3000, verbose=True)
+    sgd_net.get_results()
+    gradient_descent_net.get_results()
+    plot_loss(sgd_net, "Stochastic Gradient Descent Cost Over Time")
+    plot_loss(gradient_descent_net, "Gradient Descent Cost Over Time")

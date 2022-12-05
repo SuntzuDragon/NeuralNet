@@ -1,3 +1,3 @@
 # NeuralNet
 
-![Gradient Descent Plot](/blob/master/gradient_descent_fig.png?raw=true)
+![Gradient Descent Plot](./gradient_descent_fig.png?raw=true)

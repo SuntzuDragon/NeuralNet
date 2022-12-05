@@ -1,12 +1,12 @@
 import gzip
 import time
-
 import numpy as np
 import matplotlib
 from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
 
 
 def load_images(path):
@@ -26,6 +26,13 @@ def load_labels(path):
     num_labels = int.from_bytes(f.read(4), 'big')
     buf = f.read(num_labels)
     return np.frombuffer(buf, dtype=np.uint8).astype(np.int64)
+
+
+def show_image(train_data, train_labels, index):
+    plt.title(train_labels[index])
+    plt.imshow(train_data[index, :].reshape(28, 28), cmap=cm.binary)
+    plt.axis('off')
+    plt.show()
 
 
 class NeuralNetwork:
@@ -143,10 +150,10 @@ if __name__ == '__main__':
     np.random.seed(100)
 
     # Create and train neural network
-    sgd_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='sgd')
-    sgd_net.train(2000, verbose=True)
-    sgd_net.get_results()
-
-    gradient_descent_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='gradient_descent')
-    gradient_descent_net.train(2000, verbose=True)
-    gradient_descent_net.get_results()
+    # sgd_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='sgd')
+    # sgd_net.train(2000, verbose=True)
+    # sgd_net.get_results()
+    #
+    # gradient_descent_net = NeuralNetwork(64, X_train, y_train, X_test, y_test, 0.5, learn_method='gradient_descent')
+    # gradient_descent_net.train(2000, verbose=True)
+    # gradient_descent_net.get_results()

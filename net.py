@@ -1,3 +1,10 @@
+"""net.py: Contains a class representing an artificial neural network with a single hidden layer.
+           Created as the final project of MATH5810: Intro to Numerical Analysis Fall 2022
+           Special thanks to Jonathan Weisberg's blog posts on neural networks.
+           They were instrumental in our understanding of neural network implementation in python."""
+
+__author__ = "Jacob Knowlton and Ian McBride"
+
 import gzip
 import time
 import numpy as np
@@ -10,6 +17,7 @@ matplotlib.use('TkAgg')
 
 
 def load_images(path):
+    """Loads in the images from the MNIST database source file."""
     f = gzip.open(path, 'r')
 
     f.read(4)
@@ -21,6 +29,7 @@ def load_images(path):
 
 
 def load_labels(path):
+    """Loads in the labels from the MNIST database source file."""
     f = gzip.open(path, 'r')
     f.read(4)
     num_labels = int.from_bytes(f.read(4), 'big')
@@ -29,6 +38,7 @@ def load_labels(path):
 
 
 def show_image(train_data, train_labels, index):
+    """Generates a plot that shows what an image from the MNIST database looks like."""
     plt.title(train_labels[index])
     plt.imshow(train_data[index, :].reshape(28, 28), cmap=cm.binary)
     plt.axis('off')
@@ -36,6 +46,7 @@ def show_image(train_data, train_labels, index):
 
 
 def plot_loss(net, title):
+    """Plots the loss over time from a trained neural net. These values are saved in the neural net."""
     x = range(net.loss_vals.shape[0])
     y = net.loss_vals
     plt.suptitle(title)
@@ -47,6 +58,9 @@ def plot_loss(net, title):
 
 
 class NeuralNetwork:
+    """Class representing an artificial neural network with one hidden layer.
+    Implemented to allow either standard gradient descent or stochastic gradient descent optimization methods."""
+
     def __init__(self, num_hidden, train_data, train_labels, test_data, test_labels, learning_rate,
                  learn_method='gradient_descent'):
         # Set instance variables
@@ -81,7 +95,7 @@ class NeuralNetwork:
 
     @staticmethod
     def sigmoid(z):
-        z = np.clip(z, -500, 500)
+        z = np.clip(z, -500, 500)  # Prevents overflows
         return 1 / (1 + np.exp(-z))
 
     @staticmethod
@@ -90,16 +104,20 @@ class NeuralNetwork:
 
     @staticmethod
     def __compute_loss(y, y_hat):
+        """Computes the total loss of the network using cross-entropy loss."""
         loss_sum = np.sum(np.multiply(y, np.log(y_hat)))
         return -(1 / y.shape[1]) * loss_sum
 
     def __feed_forward(self, train_data):
+        """Performs the forward pass of the neural network, calculating the output."""
         self.z1 = np.matmul(self.w1, train_data) + self.b1
         self.a1 = NeuralNetwork.sigmoid(self.z1)
         self.z2 = np.matmul(self.w2, self.a1) + self.b2
         self.a2 = NeuralNetwork.softmax(self.z2)
 
     def __back_prop(self, train_data, train_labels):
+        """Calculates the gradient vector of the loss function, then updates the parameters using the negative
+        gradient times the learning rate. """
         num_examples = train_data.shape[1]
         d_z2 = self.a2 - train_labels
         d_w2 = (1.0 / num_examples) * np.matmul(d_z2, self.a1.T)
@@ -109,25 +127,30 @@ class NeuralNetwork:
         d_z1 = d_a1 * NeuralNetwork.sigmoid(self.z1) * (1 - NeuralNetwork.sigmoid(self.z1))
         d_w1 = (1.0 / num_examples) * np.matmul(d_z1, train_data.T)
         d_b1 = (1.0 / num_examples) * np.sum(d_z1, axis=1, keepdims=True)
-
+        # Update parameters
         self.w2 = self.w2 - self.learning_rate * d_w2
         self.b2 = self.b2 - self.learning_rate * d_b2
         self.w1 = self.w1 - self.learning_rate * d_w1
         self.b1 = self.b1 - self.learning_rate * d_b1
 
     def train(self, num_epochs, verbose=False):
+        """Training method for the neural network. Performs either standard gradient descent or stochastic gradient
+        descent based on the parameters of the neural network. Runs epoch number of iterations and prints out the
+        cost every 25 epochs if Verbose is true. """
         train_data = self.train_data
         train_labels = self.train_labels
         self.loss_vals = np.empty(num_epochs)
         start_time = time.perf_counter()
         for i in range(num_epochs):
+            # Stochastic gradient descent step
             if self.learn_method == 'sgd':
                 shuffle_index = np.random.permutation(self.train_data.shape[1])
                 train_data = self.train_data[:, shuffle_index][:, :1000]
                 train_labels = self.train_labels[:, shuffle_index][:, :1000]
+            # Change weights
             self.__feed_forward(train_data)
             self.__back_prop(train_data, train_labels)
-
+            # Compute cost
             self.__feed_forward(train_data)
             cost = self.__compute_loss(train_labels, self.a2)
             self.loss_vals[i] = cost
@@ -138,6 +161,9 @@ class NeuralNetwork:
         self.training_time = end_time - start_time
 
     def get_results(self):
+        """Prints the results of the training step. Should only be called after training has completed. Gives the
+        confusion matrix of the neural network based on the testing data, as well as the overall accuracy,
+        training time, and training method used. """
         self.__feed_forward(self.test_data)
 
         predictions = np.argmax(self.a2, axis=0)
